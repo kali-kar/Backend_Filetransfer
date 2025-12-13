@@ -93,8 +93,17 @@ wss.on('connection', (ws, req) => {
   
   console.log(`New WebSocket connection from ${clientIp}`);
   
-  // Send initial connection confirmation
-  ws.send(JSON.stringify({ type: 'connected', message: 'WebSocket connection established' }));
+  // Send initial connection confirmation after connection is fully established
+  // Use setImmediate to ensure connection is ready
+  setImmediate(() => {
+    if (ws.readyState === WebSocket.OPEN) {
+      try {
+        ws.send(JSON.stringify({ type: 'connected', message: 'WebSocket connection established' }));
+      } catch (error) {
+        console.error(`Error sending connection confirmation to ${clientIp}:`, error);
+      }
+    }
+  });
   
   ws.on('message', (data) => {
     try {
