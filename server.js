@@ -35,7 +35,13 @@ app.get('/health', (req, res) => {
 // WebSocket server for signaling
 const wss = new WebSocket.Server({ 
   server,
-  perMessageDeflate: false
+  perMessageDeflate: false,
+  clientTracking: true,
+  // Handle WebSocket upgrade requests
+  verifyClient: (info) => {
+    // Allow all origins for WebSocket connections (CORS handled at HTTP level)
+    return true;
+  }
 });
 
 // Store active rooms: roomId -> Set of WebSocket connections
@@ -83,9 +89,12 @@ function removeFromRoom(roomId, ws) {
 // Handle WebSocket connections
 wss.on('connection', (ws, req) => {
   let currentRoomId = null;
-  const clientIp = req.socket.remoteAddress;
+  const clientIp = req.socket.remoteAddress || req.headers['x-forwarded-for'] || 'unknown';
   
   console.log(`New WebSocket connection from ${clientIp}`);
+  
+  // Send initial connection confirmation
+  ws.send(JSON.stringify({ type: 'connected', message: 'WebSocket connection established' }));
   
   ws.on('message', (data) => {
     try {
@@ -178,20 +187,49 @@ wss.on('connection', (ws, req) => {
     }
   });
   
-  // Send ping to keep connection alive
+  // Send ping to keep connection alive (important for Render)
   const pingInterval = setInterval(() => {
     if (ws.readyState === WebSocket.OPEN) {
-      ws.ping();
+      try {
+        ws.ping();
+      } catch (error) {
+        console.error(`Error sending ping to ${clientIp}:`, error);
+        clearInterval(pingInterval);
+      }
     } else {
       clearInterval(pingInterval);
     }
   }, 30000);
+  
+  // Handle pong response
+  ws.on('pong', () => {
+    // Connection is alive
+  });
+});
+
+// Handle WebSocket server errors
+wss.on('error', (error) => {
+  console.error('WebSocket server error:', error);
 });
 
 const PORT = process.env.PORT || 3000;
+const HOST = process.env.HOST || '0.0.0.0';
 
-server.listen(PORT, () => {
-  console.log(`Signaling server running on port ${PORT}`);
+server.listen(PORT, HOST, () => {
+  console.log(`Signaling server running on ${HOST}:${PORT}`);
   console.log(`WebSocket server ready for connections`);
-  console.log(`Health check: http://localhost:${PORT}/health`);
+  console.log(`Health check: http://${HOST}:${PORT}/health`);
+  console.log(`WebSocket endpoint: ws://${HOST}:${PORT} (or wss:// in production)`);
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  console.log('SIGTERM signal received: closing HTTP server');
+  server.close(() => {
+    console.log('HTTP server closed');
+    wss.close(() => {
+      console.log('WebSocket server closed');
+      process.exit(0);
+    });
+  });
 });
