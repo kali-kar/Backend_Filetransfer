@@ -1,0 +1,13 @@
+# Render deployment configuration
+# This file helps Render understand how to deploy your backend service
+
+services:
+  - type: web
+    name: p2p-signaling-server
+    env: node
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+
