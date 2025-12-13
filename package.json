@@ -1,0 +1,22 @@
+{
+  "name": "p2p-file-transfer-signaling",
+  "version": "1.0.0",
+  "description": "WebRTC signaling server for P2P file transfer",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [
+    "webrtc",
+    "signaling",
+    "p2p",
+    "file-transfer"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "ws": "^8.14.2"
+  }
+}
+
