@@ -1,3 +1,3 @@
 Hosting 
-Frontend- Netlify \n
+Frontend- Netlify <br>
 Backend - Render
